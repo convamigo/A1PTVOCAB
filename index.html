@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Canvas Engine Playground</title>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body {
+      display: grid;
+      place-items: center;
+      background: #111;
+      color: #ddd;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    }
+    #wrap {
+      width: min(100vw, 1200px);
+      height: min(100vh, 800px);
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 10px;
+      padding: 12px;
+      box-sizing: border-box;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      border: 1px solid #222;
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      image-rendering: crisp-edges;
+    }
+    .pill {
+      border: 1px solid #2a2a2a;
+      background: #151515;
+      padding: 6px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    kbd {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      background: #1b1b1b;
+      border: 1px solid #2a2a2a;
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <header>
+      <div class="pill">Canvas Engine Playground</div>
+      <div class="pill">Resize-aware • HiDPI • <kbd>Space</kbd> pause • <kbd>R</kbd> reset</div>
+      <div class="pill" id="hud">FPS: --</div>
+    </header>
+
+    <canvas id="c" aria-label="canvas"></canvas>
+  </div>
+
+  <script>
+    // ===== Canvas setup (HiDPI + resize aware) =====
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    const hud = document.getElementById('hud');
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+      canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // ===== Minimal game loop scaffold =====
+    let running = true;
+    let last = performance.now();
+    let fpsSMA = 60;
+
+    const state = {
+      t: 0,
+      // Put engine state here
+    };
+
+    function reset() {
+      state.t = 0;
+    }
+
+    function update(dt) {
+      state.t += dt;
+      // Put simulation updates here
+    }
+
+    function render() {
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+
+      // Clear
+      ctx.clearRect(0, 0, w, h);
+
+      // Placeholder draw
+      ctx.fillStyle = '#0b0b0b';
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.fillStyle = '#9ae6b4';
+      ctx.font = '16px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
+      ctx.fillText('Paste your engine code and we\'ll build on this scaffold.', 16, 28);
+      ctx.fillText(`t = ${state.t.toFixed(2)}s`, 16, 52);
+
+      // Example animated dot
+      const x = 16 + (Math.sin(state.t * 2) * 0.5 + 0.5) * (w - 32);
+      const y = h * 0.5;
+      ctx.beginPath();
+      ctx.arc(x, y, 8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function loop(now) {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+
+      // FPS HUD
+      const fps = 1 / Math.max(1e-6, dt);
+      fpsSMA = fpsSMA * 0.9 + fps * 0.1;
+      hud.textContent = `FPS: ${fpsSMA.toFixed(0)}`;
+
+      if (running) update(dt);
+      render();
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+
+    // ===== Controls =====
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        running = !running;
+      }
+      if (e.key.toLowerCase() === 'r') reset();
+    });
+
+    // ===== Optional: helpful pointer coords =====
+    const pointer = { x: 0, y: 0, down: false };
+    canvas.addEventListener('pointermove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      pointer.x = e.clientX - rect.left;
+      pointer.y = e.clientY - rect.top;
+    });
+    canvas.addEventListener('pointerdown', () => { pointer.down = true; });
+    canvas.addEventListener('pointerup', () => { pointer.down = false; });
+  </script>
+</body>
+</html>
