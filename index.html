@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vocab Trainer</title>
+  <title>Treinador de Vocabulário (NL → PT-BR)</title>
   <style>
     /* Show slider on hover */
     #volume-control:hover #volume-slider { display: block !important; }
@@ -167,15 +167,15 @@
 <body>
     <div class="container">
   <div id="start-screen" class="screen active">
-    <h1>Vocab Trainer</h1>
+    <h1>Treinador de Vocabulário</h1>
     <p id="intro-text"></p>
     <div class="count-box">
-        <span id="total-count">0</span> words
+        $1 palavras
         </div>
         <p></p>
 
 
-    <button id="start-btn">Start</button>
+    <button id="start-btn">Começar</button>
   </div>
 
   <div id="quiz-screen" class="screen">
@@ -186,24 +186,24 @@
     <div id="term-box"></div>
     <div id="mcq-options" class="options"></div>
     <div id="typing-area">
-      <input id="typing-input" type="text" placeholder="Type translation..." autofocus>
+      <input id="typing-input" type="text" placeholder="Digite a tradução em português..." autofocus>
       <button id="enter-btn">↵</button>
     </div>
-    <button id="dk-btn">Don’t know</button>
+    <button id="dk-btn">Não sei</button>
   </div>
   
   <!-- MATCH SCREEN -->
   <div id="match-screen" class="screen">
-    <h2>Match the words</h2>
+    <h2>Combine as palavras</h2>
     <div id="match-container" class="options"></div>
-    <button id="match-done-btn" style="display:none; margin-top:10px;">Done</button>
+    <button id="match-done-btn" style="display:none; margin-top:10px;">Concluir</button>
   </div>
 
   <div id="end-screen" class="screen">
-    <h2>Review Mistakes</h2>
+    <h2>Revisar erros</h2>
     <div id="end-list"></div>
-    <button id="retry-btn" class="same-size-btn">Retry Mistakes</button>
-    <button id="restart-btn" class="same-size-btn">Restart All</button>
+    <button id="retry-btn" class="same-size-btn">Repetir erros</button>
+    <button id="restart-btn" class="same-size-btn">Recomeçar tudo</button>
   </div>
 
   <audio id="sound-correct" src="https://github.com/convamigo/InglesA1/raw/refs/heads/main/Correct2.mp3"></audio>
@@ -216,22 +216,28 @@
      </div>
 
   <script>
-      // We'll load whatever JSON file the URL hash points to (default: basicwords.json)
+      // Carrega o arquivo JSON indicado no hash da URL (padrão: vocab-nl-pt.json)
       let initialTerms = [];
       const dataFile = window.location.hash
       ? window.location.hash.substring(1)
-      : 'm1-subjuntivos.json';
+      : 'vocab-nl-pt.json';
       fetch(dataFile)
       .then(res => res.json())
       .then(data => {
-          initialTerms = data.terms;
+          // Normaliza chaves para NL (holandês) e PT (português do Brasil)
+          initialTerms = (data.terms || []).map(t => ({
+            ...t,
+            nl: t.nl ?? t.en ?? t.dutch ?? t.term ?? '',
+            pt: t.pt ?? t.ptbr ?? t['pt-BR'] ?? t.br ?? t.translation ?? '',
+            example: t.example ?? t.exemplo ?? t.frase ?? ''
+          }));
           // Set the intro text
           document.getElementById('intro-text').textContent = data.intro;
           startSession();
           showScreen(startScreen);
       })
       .catch(err => {
-          alert('Failed to load ' + dataFile + ': ' + err);
+          alert('Não foi possível carregar ' + dataFile + ': ' + err);
 });
     let terms, stage1Queue, learnedStage1, learnedTyping, stage2Queue, mistakes, currentTerm, typeCount, round;
     const startScreen=document.getElementById('start-screen'),
@@ -367,7 +373,7 @@ volumeToggle.addEventListener('click', () => {
     }
 
     function renderMCQ(term){
-      currentTerm=term; hideTyping(); termBox.innerHTML = `<strong>${term.en}</strong><div style="font-size: 0.6em; color: #555; margin-top: 6px;">${term.example || ''}</div>`; mcqOptions.innerHTML='';
+      currentTerm=term; hideTyping(); termBox.innerHTML = `<strong>${term.nl}</strong><div style="font-size: 0.6em; color: #555; margin-top: 6px;">${term.example || ''}</div>`; mcqOptions.innerHTML='';
       document.querySelectorAll('#quiz-screen .correct-text')
         .forEach(el => el.remove());
       [term.pt,...getDistractorsPT(term.pt)].sort(()=>Math.random()-.5).forEach((opt,i)=>{
@@ -386,7 +392,7 @@ volumeToggle.addEventListener('click', () => {
       typingInput.disabled = false;
       enterBtn.disabled   = false;
       dkBtn.disabled      = false;
-      termBox.textContent=term.en; mcqOptions.innerHTML=''; typingArea.classList.add('active');
+      termBox.textContent=term.nl; mcqOptions.innerHTML=''; typingArea.classList.add('active');
       dkBtn.style.display='block'; typingInput.value=''; typingInput.focus();
       scrollToQuizScreen();
 
@@ -626,7 +632,7 @@ volumeToggle.addEventListener('click', () => {
       const list=document.getElementById('end-list'); list.innerHTML='';
       mistakes.forEach(t=>{
         const item=document.createElement('div'); item.className='error-item';
-        item.innerHTML=`<div class="pt-box">${t.pt}</div><div class="correct-text">${t.en}</div>`;
+        item.innerHTML=`<div class="pt-box">${t.nl}</div><div class="correct-text">${t.pt}</div>`;
         list.appendChild(item);
       });
     }
@@ -646,7 +652,7 @@ function startMatchExercise() {
   const sliceCount = (isFinalBatch && totalLearned % 5 !== 0)
     ? (totalLearned % 5)
     : Math.min(5, totalLearned);
-  matchPairs = learnedTyping.slice(-sliceCount).map(t => ({ pt: t.pt, en: t.en, matched: false }));
+  matchPairs = learnedTyping.slice(-sliceCount).map(t => ({ pt: t.pt, nl: t.nl, matched: false }));
   renderMatchExercise();
 }
 
@@ -656,9 +662,9 @@ function renderMatchExercise() {
   const left = document.createElement('div'), right = document.createElement('div');
   left.className = right.className = 'match-columns';
   const pts = shuffle(matchPairs.map(p => p.pt));
-  const ens = shuffle(matchPairs.map(p => p.en));
+  const nls = shuffle(matchPairs.map(p => p.nl));
   pts.forEach(pt => { left.innerHTML += `<div class="match-item" data-val="${pt}">${pt}</div>`; });
-  ens.forEach(en => { right.innerHTML += `<div class="match-item" data-val="${en}">${en}</div>`; });
+  nls.forEach(nl => { right.innerHTML += `<div class="match-item" data-val="${nl}">${nl}</div>`; });
   container.appendChild(left);
   container.appendChild(right);
   container.querySelectorAll('.match-item').forEach(el => el.addEventListener('click', () => handleMatchClick(el)));
@@ -678,7 +684,7 @@ function handleMatchClick(el) {
   // evaluate the pair
   const a = firstSelection.dataset.val;
   const b = el.dataset.val;
-  const pairOk = matchPairs.some(p => (p.pt === a && p.en === b) || (p.pt === b && p.en === a));
+  const pairOk = matchPairs.some(p => (p.pt === a && p.nl === b) || (p.pt === b && p.nl === a));
   // visually mark result on both selections
   firstSelection.classList.toggle(pairOk ? 'correct' : 'incorrect');
   el.classList.toggle(pairOk ? 'correct' : 'incorrect');
@@ -728,7 +734,7 @@ function shuffle(arr) {
     enterBtn.addEventListener('click', ()=>handleTyping());
     dkBtn.addEventListener('click', ()=>handleTyping('dk'));
     startBtn.addEventListener('click',()=>{startSession(); showScreen(quizScreen); nextQuestion();});
-    retryBtn.addEventListener('click',()=>{ if(mistakes.length<4){alert('Need 4+ mistakes');return;} startSession(mistakes); showScreen(quizScreen); nextQuestion(); });
+    retryBtn.addEventListener('click',()=>{ if(mistakes.length<4){alert('Você precisa de 4+ erros para repetir.');return;} startSession(mistakes); showScreen(quizScreen); nextQuestion(); });
     restartBtn.addEventListener('click',()=>location.reload());
 
     // Initialize
