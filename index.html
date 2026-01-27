@@ -170,7 +170,7 @@
     <h1>Treinador de Vocabulário</h1>
     <p id="intro-text"></p>
     <div class="count-box">
-        $1 palavras
+        <span id="total-count">0</span> palavras
         </div>
         <p></p>
 
@@ -216,11 +216,40 @@
      </div>
 
   <script>
-      // Carrega o arquivo JSON indicado no hash da URL (padrão: vocab-nl-pt.json)
+      // Carrega o arquivo JSON indicado na URL.
+      // Suporta:
+      // 1) ?list=<url-ou-nome>  (recomendado)
+      // 2) #<url-ou-nome>
+      // 3) fallback: vocab-nl-pt.json
+      //
+      // Se você passar apenas um nome (ex.: m1-subjuntivos.json), ele será buscado no BASE_LIST_URL.
       let initialTerms = [];
-      const dataFile = window.location.hash
-      ? window.location.hash.substring(1)
-      : 'vocab-nl-pt.json';
+
+      const BASE_LIST_URL = 'https://convamigo.github.io/A1PTVOCAB/';
+
+      function resolveListPath(raw) {
+        if (!raw) return 'vocab-nl-pt.json';
+        const v = decodeURIComponent(String(raw).trim());
+        if (!v) return 'vocab-nl-pt.json';
+
+        // allow full URLs
+        if (/^https?:\/\//i.test(v)) return v;
+
+        // allow absolute paths
+        if (v.startsWith('/')) return v;
+
+        // if user passes "m2-verbos" add .json
+        const withExt = v.toLowerCase().endsWith('.json') ? v : `${v}.json`;
+
+        // treat as file in the shared base folder
+        return BASE_LIST_URL + withExt;
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const rawFromQuery = params.get('list') || params.get('vocab') || params.get('data');
+      const rawFromHash = window.location.hash ? window.location.hash.substring(1) : '';
+      const dataFile = resolveListPath(rawFromQuery || rawFromHash);
+
       fetch(dataFile)
       .then(res => res.json())
       .then(data => {
