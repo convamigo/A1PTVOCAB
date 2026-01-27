@@ -226,11 +226,13 @@
       let initialTerms = [];
 
       const BASE_LIST_URL = 'https://convamigo.github.io/A1PTVOCAB/';
+      const DEFAULT_LIST_FILE = 'm1-subjuntivos.json';
 
       function resolveListPath(raw) {
-        if (!raw) return 'vocab-nl-pt.json';
+        // If nothing is specified, load a sensible default that exists in this repo.
+        if (!raw) return BASE_LIST_URL + DEFAULT_LIST_FILE;
         const v = decodeURIComponent(String(raw).trim());
-        if (!v) return 'vocab-nl-pt.json';
+        if (!v) return BASE_LIST_URL + DEFAULT_LIST_FILE;
 
         // allow full URLs
         if (/^https?:\/\//i.test(v)) return v;
@@ -250,8 +252,14 @@
       const rawFromHash = window.location.hash ? window.location.hash.substring(1) : '';
       const dataFile = resolveListPath(rawFromQuery || rawFromHash);
 
+      // Helpful for debugging on GitHub Pages
+      console.log('Loading vocab list:', dataFile);
+
       fetch(dataFile)
-      .then(res => res.json())
+      .then(res => {
+          if (!res.ok) throw new Error(`HTTP ${res.status} ao buscar ${dataFile}`);
+          return res.json();
+      })
       .then(data => {
           // Normaliza chaves para NL (holandês) e PT (português do Brasil)
           initialTerms = (data.terms || []).map(t => ({
@@ -261,7 +269,7 @@
             example: t.example ?? t.exemplo ?? t.frase ?? ''
           }));
           // Set the intro text
-          document.getElementById('intro-text').textContent = data.intro;
+          document.getElementById('intro-text').textContent = data.intro || '';
           startSession();
           showScreen(startScreen);
       })
