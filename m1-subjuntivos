@@ -1,0 +1,145 @@
+{
+  "intro": "Aqui estão os pares de vocabulário Português (Brasil) – Holandês, com frases de exemplo em holandês.",
+  "terms": [
+    {
+      "pt": "holandês",
+      "nl": "Nederlands",
+      "example": "Nederlands is een taal."
+    },
+    {
+      "pt": "português",
+      "nl": "portugees",
+      "example": "Portugees is een taal."
+    },
+    {
+      "pt": "a mulher",
+      "nl": "de vrouw",
+      "example": "De vrouw is een persoon."
+    },
+    {
+      "pt": "o homem",
+      "nl": "de man",
+      "example": "De man is een persoon."
+    },
+    {
+      "pt": "o menino",
+      "nl": "de jongen",
+      "example": "De jongen is een mens."
+    },
+    {
+      "pt": "a menina",
+      "nl": "het meisje",
+      "example": "Het meisje is een mens."
+    },
+    {
+      "pt": "a pessoa",
+      "nl": "de persoon",
+      "example": "Een persoon is een mens."
+    },
+    {
+      "pt": "o humano",
+      "nl": "het mens",
+      "example": "Een mens is een persoon."
+    },
+    {
+      "pt": "o animal",
+      "nl": "het dier",
+      "example": "Een dier is geen mens."
+    },
+    {
+      "pt": "a coisa",
+      "nl": "het ding",
+      "example": "Dit ding is geen dier."
+    },
+    {
+      "pt": "o país",
+      "nl": "het land",
+      "example": "Nederland is een land."
+    },
+    {
+      "pt": "o nome",
+      "nl": "de naam",
+      "example": "Haar naam is Anna."
+    },
+    {
+      "pt": "o professor",
+      "nl": "de leraar",
+      "example": "De leraar is in de les."
+    },
+    {
+      "pt": "o estudante",
+      "nl": "de student",
+      "example": "De student is een persoon."
+    },
+    {
+      "pt": "o aluno",
+      "nl": "de leerling",
+      "example": "De leerling is in de les."
+    },
+    {
+      "pt": "a Holanda",
+      "nl": "Nederland",
+      "example": "Ik woon in Nederland."
+    },
+    {
+      "pt": "a Bélgica",
+      "nl": "België",
+      "example": "België is een land."
+    },
+    {
+      "pt": "o Brasil",
+      "nl": "Brazilië",
+      "example": "Brazilië is een land."
+    },
+    {
+      "pt": "o idioma",
+      "nl": "de taal",
+      "example": "Nederlands is een taal."
+    },
+    {
+      "pt": "a palavra",
+      "nl": "het woord",
+      "example": "Dit woord is Nederlands."
+    },
+    {
+      "pt": "o exemplo",
+      "nl": "het voorbeeld",
+      "example": "Deze zin is een voorbeeld."
+    },
+    {
+      "pt": "o exercício",
+      "nl": "de opdracht",
+      "example": "Ik maak een opdracht."
+    },
+    {
+      "pt": "a pergunta",
+      "nl": "de vraag",
+      "example": "Ik heb een vraag."
+    },
+    {
+      "pt": "a resposta",
+      "nl": "het antwoord",
+      "example": "Ik weet het antwoord."
+    },
+    {
+      "pt": "a aula",
+      "nl": "de les",
+      "example": "Ik doe de les."
+    },
+    {
+      "pt": "a idade",
+      "nl": "de leeftijd",
+      "example": "Wat is je leeftijd?"
+    },
+    {
+      "pt": "o local onde mora",
+      "nl": "de woonplaats",
+      "example": "Mijn woonplaats is Amsterdam."
+    },
+    {
+      "pt": "a nacionalidade",
+      "nl": "de nationaliteit",
+      "example": "Mijn nationaliteit is Braziliaans."
+    }
+  ]
+}
