@@ -1,0 +1,35 @@
+{
+  "intro": "Aqui estão os pares de vocabulário Português (Brasil) – Holandês, com frases de exemplo em holandês.",
+  "terms": [
+    {
+      "pt": "o / a",
+      "nl": "de / het",
+      "example": "De student is een man."
+    },
+    {
+      "pt": "um / uma",
+      "nl": "een",
+      "example": "Een hond is een dier."
+    },
+    {
+      "pt": "e",
+      "nl": "en",
+      "example": "De man en de vrouw zijn leraren."
+    },
+    {
+      "pt": "sim",
+      "nl": "ja",
+      "example": "Nederland is een land, ik ben Nederlands."
+    },
+    {
+      "pt": "não",
+      "nl": "nee",
+      "example": "Nee, ik ben niet Portugees."
+    },
+    {
+      "pt": "também",
+      "nl": "ook",
+      "example": "Ik heb ook een vraag."
+    }
+  ]
+}
