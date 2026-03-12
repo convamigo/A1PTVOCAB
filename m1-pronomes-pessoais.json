@@ -1,0 +1,50 @@
+{
+  "intro": "Aqui estão os pares de vocabulário Português (Brasil) – Holandês, com frases de exemplo em holandês.",
+  "terms": [
+    {
+      "pt": "eu",
+      "nl": "ik",
+      "example": "Ik ben een man."
+    },
+    {
+      "pt": "tu, você",
+      "nl": "jij / je",
+      "example": "Jij bent een vrouw."
+    },
+    {
+      "pt": "você",
+      "nl": "U",
+      "example": "U heeft een vraag."
+    },
+    {
+      "pt": "ele",
+      "nl": "hij",
+      "example": "Hij is Nederlands."
+    },
+    {
+      "pt": "ela",
+      "nl": "zij / ze",
+      "example": "Zij is Portugees."
+    },
+    {
+      "pt": "*",
+      "nl": "het",
+      "example": "Het is een dier."
+    },
+    {
+      "pt": "nós",
+      "nl": "wij / we",
+      "example": "Wij zijn Braziliaans."
+    },
+    {
+      "pt": "vocês",
+      "nl": "jullie",
+      "example": "Jullie zijn mannen."
+    },
+    {
+      "pt": "eles / elas",
+      "nl": "zij / ze",
+      "example": "Zij zijn studenten."
+    }
+  ]
+}
