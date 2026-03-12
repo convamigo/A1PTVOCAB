@@ -1037,7 +1037,13 @@ function shuffle(arr) {
         if (typeof clearProgress === 'function') clearProgress();
       } catch(e){}
 
-      location.reload();
+      // Restart the engine from zero without reloading
+      if (typeof startSession === 'function') {
+        startSession(initialTerms);
+        showScreen(startScreen);
+      }
+
+      resetButton();
     });
   })();
   </script>
