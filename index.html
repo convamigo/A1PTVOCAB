@@ -324,7 +324,10 @@ volumeToggle.addEventListener('click', () => {
       learnedStage1=[]; 
       learnedTyping=[];
       stage2Queue=[];
-      if (list.length === initialTerms.length && list.every((t, i) => t === initialTerms[i])) mistakes = [];
+      // Track mistakes per session only.
+      // This way, when a retry round starts from the previous mistakes,
+      // any word answered correctly in the new round drops out again.
+      mistakes=[];
       currentTerm=null;
       typeCount=0;
       round = 0;
@@ -354,8 +357,8 @@ volumeToggle.addEventListener('click', () => {
         }
     }
 
-    function getDistractorsPT(correctPT) {
-  const pool = terms.map(t => t.pt).filter(pt => pt !== correctPT);
+    function getDistractorsNL(correctNL) {
+  const pool = terms.map(t => t.nl).filter(nl => nl !== correctNL);
   let picks = [];
       while (picks.length < 3) {
         const v=pool[Math.floor(Math.random()*pool.length)];
@@ -410,10 +413,28 @@ volumeToggle.addEventListener('click', () => {
     }
 
     function renderMCQ(term){
-      currentTerm=term; hideTyping(); termBox.innerHTML = `<strong>${term.nl}</strong><div style="font-size: 0.6em; color: #555; margin-top: 6px;">${term.example || ''}</div>`; mcqOptions.innerHTML='';
+      currentTerm=term; hideTyping();
+      let exampleControls = '';
+      if (term.example) {
+        exampleControls = `
+          <div style="margin-top:8px;">
+            <button id="show-example-btn" style="font-size:8px;padding:3px 8px;border-radius:12px;background:#2196f3;color:white;border:none;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.15);">Mostrar exemplo</button>
+            <div id="example-box" style="display:none;font-size:0.6em;color:#555;margin-top:6px;">${term.example}</div>
+          </div>
+        `;
+      }
+      termBox.innerHTML = `<strong>${term.pt}</strong>${exampleControls}`;
+      const btn = document.getElementById('show-example-btn');
+      if (btn) {
+        btn.addEventListener('click', () => {
+          const box = document.getElementById('example-box');
+          if (box) box.style.display = box.style.display === 'none' ? 'block' : 'none';
+        });
+      }
+      mcqOptions.innerHTML='';
       document.querySelectorAll('#quiz-screen .correct-text')
         .forEach(el => el.remove());
-      [term.pt,...getDistractorsPT(term.pt)].sort(()=>Math.random()-.5).forEach((opt,i)=>{
+      [term.nl,...getDistractorsNL(term.nl)].sort(()=>Math.random()-.5).forEach((opt,i)=>{
         const btn=document.createElement('div'); btn.className='option';
         btn.innerHTML=`<span class="key">${i+1}</span> ${opt}`;
         btn.addEventListener('click',()=>handleMCQ(opt,btn)); mcqOptions.appendChild(btn);
@@ -429,7 +450,7 @@ volumeToggle.addEventListener('click', () => {
       typingInput.disabled = false;
       enterBtn.disabled   = false;
       dkBtn.disabled      = false;
-      termBox.textContent=term.nl; mcqOptions.innerHTML=''; typingArea.classList.add('active');
+      termBox.textContent=term.pt; mcqOptions.innerHTML=''; typingArea.classList.add('active');
       dkBtn.style.display='block'; typingInput.value=''; typingInput.focus();
       scrollToQuizScreen();
 
@@ -443,7 +464,7 @@ volumeToggle.addEventListener('click', () => {
     }
 
     function handleMCQ(ans,btn){
-      const ok=(ans===currentTerm.pt);
+      const ok=(ans===currentTerm.nl);
       // ◀ disable all buttons immediately
       mcqOptions.querySelectorAll('.option')
       .forEach(o => o.style.pointerEvents = 'none');
@@ -456,7 +477,7 @@ volumeToggle.addEventListener('click', () => {
           stage1Queue.unshift(currentTerm);
           // highlight the true answer in yellow
           mcqOptions.querySelectorAll('.option').forEach(o => {
-              if (o.textContent.trim().endsWith(currentTerm.pt)) {
+              if (o.textContent.trim().endsWith(currentTerm.nl)) {
                   o.style.background = '#fff69d';
               }
           });
@@ -487,6 +508,7 @@ volumeToggle.addEventListener('click', () => {
         enterBtn.disabled   = true;
         dkBtn.disabled      = true;
       let ok;
+      let typoHint=false;
       if(action==='dk'){
         // treat "don't know" as incorrect; neutral bar
         ok=false;
@@ -498,7 +520,7 @@ volumeToggle.addEventListener('click', () => {
           .replace(/[^a-z0-9 ]/g, '')
           .replace(/\s+/g, ' ').trim();
         const vRaw = typingInput.value.trim().toLowerCase();
-        const fRaw = currentTerm.pt.toLowerCase();
+        const fRaw = currentTerm.nl.toLowerCase();
         // remove parenthetical hints from the correct answer
         const sRaw = fRaw.replace(/\s*\([^)]*\)\s*/g, ' ').trim();
         const v = sanitize(vRaw);
@@ -527,10 +549,25 @@ volumeToggle.addEventListener('click', () => {
           return edits <= 1;
         }
         // evaluate correctness: exact match or within one edit distance
-        ok = (v === f || v === s || editDistanceOne(v, f) || editDistanceOne(v, s));
+        const exact = (v === f || v === s);
+        const close = (!exact && (editDistanceOne(v, f) || editDistanceOne(v, s)));
+        ok = exact || close;
         resetTypeBar(ok ? '--type-correct' : '--type-incorrect');
         // visually mark the input
         typingInput.style.backgroundColor = ok ? '#dcedc8' : '#ffcdd2';
+
+        // If spelling was slightly off but accepted, show hint with correct spelling
+        if (ok && close) {
+          typoHint = true;
+          const note = document.createElement('div');
+          note.className = 'correct-text';
+          note.style.background = '#fff3cd';
+          note.style.marginTop = '8px';
+          note.style.fontSize = '0.9em';
+          note.textContent = `Atenção à ortografia: ${currentTerm.nl}`;
+          typingArea.parentNode.insertBefore(note, dkBtn.nextSibling);
+        }
+
         if (ok && !learnedTyping.includes(currentTerm)) {
             typeCount++;
             learnedTyping.push(currentTerm);
@@ -549,7 +586,7 @@ volumeToggle.addEventListener('click', () => {
         corr.className = 'correct-text';
         corr.style.background = 'yellow';
         corr.style.marginTop = '10px';
-        corr.textContent = currentTerm.pt;
+        corr.textContent = currentTerm.nl;
         typingArea.parentNode.insertBefore(corr, dkBtn.nextSibling);
         // Insert “I was right” override button
         overrideBtn = document.createElement('button');
@@ -625,12 +662,13 @@ volumeToggle.addEventListener('click', () => {
         return;
       }
       // schedule next question with appropriate delay
+      const delay = ok ? (typoHint ? 2500 : 1000) : 2500;
       nextQTimeout = setTimeout(() => {
       // hide the "I was right" button if still visible
       if (overrideBtn) overrideBtn.style.display = 'none';
       typingInput.style.backgroundColor = '';
       nextQuestion();
-    }, ok ? 1000 : 2000);
+    }, delay);
     }
 
     function nextQuestion(){
@@ -666,12 +704,24 @@ volumeToggle.addEventListener('click', () => {
 
     function endSession(){
       showScreen(endScreen);
-      const list=document.getElementById('end-list'); list.innerHTML='';
-      mistakes.forEach(t=>{
-        const item=document.createElement('div'); item.className='error-item';
-        item.innerHTML=`<div class="pt-box">${t.nl}</div><div class="correct-text">${t.pt}</div>`;
+      const list=document.getElementById('end-list');
+      list.innerHTML='';
+
+      if (!mistakes.length) {
+        const item=document.createElement('div');
+        item.className='correct-text';
+        item.textContent='Perfeito! Nenhum erro restante.';
         list.appendChild(item);
-      });
+        retryBtn.style.display = 'none';
+      } else {
+        retryBtn.style.display = 'inline-block';
+        retryBtn.textContent = `Repetir erros (${mistakes.length})`;
+        mistakes.forEach(t=>{
+          const item=document.createElement('div'); item.className='error-item';
+          item.innerHTML=`<div class="pt-box">${t.nl}</div><div class="correct-text">${t.pt}</div>`;
+          list.appendChild(item);
+        });
+      }
     }
 
     function varColor(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
@@ -771,7 +821,12 @@ function shuffle(arr) {
     enterBtn.addEventListener('click', ()=>handleTyping());
     dkBtn.addEventListener('click', ()=>handleTyping('dk'));
     startBtn.addEventListener('click',()=>{startSession(); showScreen(quizScreen); nextQuestion();});
-    retryBtn.addEventListener('click',()=>{ if(mistakes.length<4){alert('Você precisa de 4+ erros para repetir.');return;} startSession(mistakes); showScreen(quizScreen); nextQuestion(); });
+    retryBtn.addEventListener('click',()=>{
+      if(!mistakes.length) return;
+      startSession(mistakes);
+      showScreen(quizScreen);
+      nextQuestion();
+    });
     restartBtn.addEventListener('click',()=>location.reload());
 
     // Initialize
