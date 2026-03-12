@@ -255,27 +255,194 @@
       // Helpful for debugging on GitHub Pages
       console.log('Loading vocab list:', dataFile);
 
+      const PROGRESS_STORAGE_KEY = 'convamigo_vocab_progress';
+
+      function termKey(term){
+        return `${term.nl}|||${term.pt}`;
+      }
+
+      function buildTermMap(list){
+        const map = new Map();
+        list.forEach(term => map.set(termKey(term), term));
+        return map;
+      }
+
+      function serializeTermList(list){
+        return (list || []).map(term => ({
+          key: termKey(term),
+          readyAt: term._readyAt ?? null
+        }));
+      }
+
+      function hydrateTermList(serialized, termMap){
+        return (serialized || []).map(item => {
+          const term = termMap.get(item.key);
+          if (!term) return null;
+          term._readyAt = item.readyAt ?? null;
+          return term;
+        }).filter(Boolean);
+      }
+
+      function getListIdFromPath(path){
+        const clean = String(path || '').split('#')[0].split('?')[0];
+        const parts = clean.split('/').filter(Boolean);
+        return parts.length ? parts[parts.length - 1] : clean;
+      }
+
+      function getProgressMeta(){
+        const wp = window.wpVocabProgress || {};
+        return {
+          enabled: !!(wp.enabled && wp.userId),
+          userId: wp.userId || null,
+          restUrl: wp.restUrl || null,
+          nonce: wp.nonce || null,
+          listId: wp.listId || getListIdFromPath(dataFile)
+        };
+      }
+
+      function getLocalProgressKey(){
+        const meta = getProgressMeta();
+        const userPart = meta.userId ? `user_${meta.userId}` : 'guest';
+        return `${PROGRESS_STORAGE_KEY}__${userPart}__${meta.listId}`;
+      }
+
+      async function saveProgress() {
+        try {
+          const meta = getProgressMeta();
+          if (!meta.enabled || !initialTerms.length || !terms) return;
+          const payload = {
+            savedAt: new Date().toISOString(),
+            listId: meta.listId,
+            terms: serializeTermList(terms),
+            stage1Queue: serializeTermList(stage1Queue),
+            learnedStage1: serializeTermList(learnedStage1),
+            learnedTyping: serializeTermList(learnedTyping),
+            stage2Queue: serializeTermList(stage2Queue),
+            mistakes: serializeTermList(mistakes),
+            currentTerm: currentTerm ? { key: termKey(currentTerm), readyAt: currentTerm._readyAt ?? null } : null,
+            typeCount,
+            round,
+            activeScreen: document.querySelector('.screen.active')?.id || 'start-screen',
+            typingValue: typingInput ? typingInput.value : ''
+          };
+
+          localStorage.setItem(getLocalProgressKey(), JSON.stringify(payload));
+
+          if (meta.restUrl && meta.nonce) {
+            fetch(meta.restUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-WP-Nonce': meta.nonce
+              },
+              credentials: 'same-origin',
+              body: JSON.stringify(payload)
+            }).catch(err => console.warn('WP progress save failed:', err));
+          }
+        } catch (err) {
+          console.warn('Could not save progress:', err);
+        }
+      }
+
+      async function loadProgress() {
+        const meta = getProgressMeta();
+        if (!meta.enabled) return null;
+
+        let remoteState = null;
+        if (meta.restUrl && meta.nonce) {
+          try {
+            const url = new URL(meta.restUrl, window.location.origin);
+            url.searchParams.set('list_id', meta.listId);
+            const res = await fetch(url.toString(), {
+              method: 'GET',
+              headers: { 'X-WP-Nonce': meta.nonce },
+              credentials: 'same-origin'
+            });
+            if (res.ok) remoteState = await res.json();
+          } catch (err) {
+            console.warn('WP progress load failed:', err);
+          }
+        }
+
+        if (remoteState && remoteState.listId) return remoteState;
+
+        try {
+          const raw = localStorage.getItem(getLocalProgressKey());
+          return raw ? JSON.parse(raw) : null;
+        } catch (err) {
+          console.warn('Could not read saved progress:', err);
+          return null;
+        }
+      }
+
+      function clearProgress() {
+        try {
+          localStorage.removeItem(getLocalProgressKey());
+        } catch (err) {
+          console.warn('Could not clear local progress:', err);
+        }
+      }
+
+      function restoreSession(state) {
+        const termMap = buildTermMap(initialTerms);
+        terms = hydrateTermList(state.terms, termMap);
+        stage1Queue = hydrateTermList(state.stage1Queue, termMap);
+        learnedStage1 = hydrateTermList(state.learnedStage1, termMap);
+        learnedTyping = hydrateTermList(state.learnedTyping, termMap);
+        stage2Queue = hydrateTermList(state.stage2Queue, termMap);
+        mistakes = hydrateTermList(state.mistakes, termMap);
+        currentTerm = state.currentTerm ? (termMap.get(state.currentTerm.key) || null) : null;
+        if (currentTerm && state.currentTerm?.readyAt != null) currentTerm._readyAt = state.currentTerm.readyAt;
+        typeCount = state.typeCount || 0;
+        round = state.round || 0;
+        totalCountEl.textContent = terms.length;
+        resetTypeBar();
+        updateProgress();
+
+        if (state.activeScreen === 'end-screen') {
+          endSession();
+          return;
+        }
+
+        if (state.activeScreen === 'quiz-screen' && currentTerm) {
+          showScreen(quizScreen);
+          const isTypingTerm = !learnedTyping.includes(currentTerm) && (stage2Queue.includes(currentTerm) || learnedStage1.includes(currentTerm));
+          if (isTypingTerm) {
+            renderTyping(currentTerm);
+            typingInput.value = state.typingValue || '';
+          } else {
+            renderMCQ(currentTerm);
+          }
+          return;
+        }
+
+        showScreen(startScreen);
+      }
+
       fetch(dataFile)
       .then(res => {
           if (!res.ok) throw new Error(`HTTP ${res.status} ao buscar ${dataFile}`);
           return res.json();
       })
-      .then(data => {
-          // Normaliza chaves para NL (holandês) e PT (português do Brasil)
+      .then(async data => {
           initialTerms = (data.terms || []).map(t => ({
             ...t,
             nl: t.nl ?? t.en ?? t.dutch ?? t.term ?? '',
             pt: t.pt ?? t.ptbr ?? t['pt-BR'] ?? t.br ?? t.translation ?? '',
             example: t.example ?? t.exemplo ?? t.frase ?? ''
           }));
-          // Set the intro text
           document.getElementById('intro-text').textContent = data.intro || '';
-          startSession();
-          showScreen(startScreen);
+          const savedState = await loadProgress();
+          if (savedState && savedState.listId === getProgressMeta().listId) {
+            restoreSession(savedState);
+          } else {
+            startSession();
+            showScreen(startScreen);
+          }
       })
       .catch(err => {
           alert('Não foi possível carregar ' + dataFile + ': ' + err);
-});
+      });
     let terms, stage1Queue, learnedStage1, learnedTyping, stage2Queue, mistakes, currentTerm, typeCount, round;
     const startScreen=document.getElementById('start-screen'),
           quizScreen=document.getElementById('quiz-screen'),
@@ -324,9 +491,6 @@ volumeToggle.addEventListener('click', () => {
       learnedStage1=[]; 
       learnedTyping=[];
       stage2Queue=[];
-      // Track mistakes per session only.
-      // This way, when a retry round starts from the previous mistakes,
-      // any word answered correctly in the new round drops out again.
       mistakes=[];
       currentTerm=null;
       typeCount=0;
@@ -334,6 +498,7 @@ volumeToggle.addEventListener('click', () => {
       totalCountEl.textContent=terms.length;
       resetTypeBar();
       updateProgress();
+      saveProgress();
     }
 
     function updateProgress(){
@@ -439,6 +604,11 @@ volumeToggle.addEventListener('click', () => {
         btn.innerHTML=`<span class="key">${i+1}</span> ${opt}`;
         btn.addEventListener('click',()=>handleMCQ(opt,btn)); mcqOptions.appendChild(btn);
       });
+      saveProgress();
+    }
+
+    function persistProgress(){
+      saveProgress();
     }
 
     function renderTyping(term){
@@ -453,6 +623,7 @@ volumeToggle.addEventListener('click', () => {
       termBox.textContent=term.pt; mcqOptions.innerHTML=''; typingArea.classList.add('active');
       dkBtn.style.display='block'; typingInput.value=''; typingInput.focus();
       scrollToQuizScreen();
+      saveProgress();
 
     }
 
@@ -490,6 +661,7 @@ volumeToggle.addEventListener('click', () => {
           stage2Queue.push(currentTerm);
           updateProgress();
       }
+      saveProgress();
           setTimeout(() => { resetTypeBar(); nextQuestion(); }, ok ? 800 : 1700);
     }
 
@@ -620,6 +792,7 @@ volumeToggle.addEventListener('click', () => {
           ok = true;
           // Update progress widths
           updateProgress();
+          saveProgress();
           // —— NEW: if override completes a match batch, trigger match exercise
           if (
             typeCount > 0 &&
@@ -643,6 +816,7 @@ volumeToggle.addEventListener('click', () => {
         // update progress only on correct answers
         updateProgress();
       }
+      saveProgress();
       // trigger match on every 5 correct typings OR when both queues are empty (final batch)
       if (
         ok &&
@@ -689,16 +863,22 @@ volumeToggle.addEventListener('click', () => {
    // pull the first unlearned typing item regardless of readiness
    const idx = stage2Queue.findIndex(t => !learnedTyping.includes(t));
    const term = stage2Queue.splice(idx, 1)[0];
+   saveProgress();
    return renderTyping(term);
  }
       // only end if there are no unlearned typing items left
       const anyTypingLeft = stage2Queue.some(t => !learnedTyping.includes(t));
       if (!stage1Queue.length && !anyTypingLeft) {
+        saveProgress();
         return endSession();
       }
       const result = pickNext();
-      if (!result) return endSession();
+      if (!result) {
+        saveProgress();
+        return endSession();
+      }
       const { term, mode } = result;
+      saveProgress();
       mode === 'typing' ? renderTyping(term) : renderMCQ(term);
     }
 
@@ -713,6 +893,7 @@ volumeToggle.addEventListener('click', () => {
         item.textContent='Perfeito! Nenhum erro restante.';
         list.appendChild(item);
         retryBtn.style.display = 'none';
+        clearProgress();
       } else {
         retryBtn.style.display = 'inline-block';
         retryBtn.textContent = `Repetir erros (${mistakes.length})`;
@@ -741,6 +922,7 @@ function startMatchExercise() {
     : Math.min(5, totalLearned);
   matchPairs = learnedTyping.slice(-sliceCount).map(t => ({ pt: t.pt, nl: t.nl, matched: false }));
   renderMatchExercise();
+  saveProgress();
 }
 
 function renderMatchExercise() {
@@ -801,6 +983,7 @@ function handleMatchClick(el) {
       // reset type bar to neutral after match round
       resetTypeBar('--type-dk');
       showScreen(quizScreen);
+      saveProgress();
       nextQuestion();
     }
   }, pairOk ? 0 : 1500);
@@ -817,7 +1000,8 @@ function shuffle(arr) {
         if(i>=0&&i<mcqOptions.children.length) mcqOptions.children[i].click();
       }
     });
-    typingInput.addEventListener('keydown',e=>{ if(e.key==='Enter'){e.preventDefault(); handleTyping();} });
+    typingInput.addEventListener('keydown',e=>{ saveProgress(); if(e.key==='Enter'){e.preventDefault(); handleTyping();} });
+    typingInput.addEventListener('input', saveProgress);
     enterBtn.addEventListener('click', ()=>handleTyping());
     dkBtn.addEventListener('click', ()=>handleTyping('dk'));
     startBtn.addEventListener('click',()=>{startSession(); showScreen(quizScreen); nextQuestion();});
@@ -827,13 +1011,15 @@ function shuffle(arr) {
       showScreen(quizScreen);
       nextQuestion();
     });
-    restartBtn.addEventListener('click',()=>location.reload());
+    restartBtn.addEventListener('click',()=>{ clearProgress(); location.reload(); });
 
     // Initialize
     startSession(); showScreen(startScreen);
     volumeSlider.dispatchEvent(new Event('input')); // apply initial volume
+    window.addEventListener('beforeunload', saveProgress);
     
   </script>
   </div>
 </body>
 </html>
+
